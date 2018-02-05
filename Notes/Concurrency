@@ -1,0 +1,124 @@
+-When an app starts, a Linux thread gets spun up.
+
+-The main thread is in charge of dispatching events to the appropriate user interface widget
+-Also referred to the UI thread.
+
+-Not thread safe...
+-System does not create a separate thread for each instance of a component.
+-All components that run in the same process are instantiated in the UI thread and the system
+makes calls to each component are dispatched from that thread. (onClick for example)
+
+-Never occupy the main thread with very long tests. A SINGLE THREAD MANAGES THE APP.
+-Heavy processing can yield poor performance.
+-When the UI thread is blocked, there is no response and the user may think the app crashed
+
+-If the UI is blocked for more than a few seconds, the user is presented with "applications not
+responding" (ANR) dialog.
+-The Android UI toolkit is not thread-safe. So, you must not manipulate your UI from a worker thread.
+All manipulation to your user interface from the UI thread.
+-Two simple rules
+    .Do not block the UI thread
+    .Do not access the Android UI toolkit from outside the UI thread
+
+CREATING JAVA WORKER THREADS
+-If you ahve operations to perform that are not instantaneous, you should make sure to do them in
+separate threads.
+-Steps
+    .Create a class that implements the Runnable interface
+    .Run it
+        - Create a Thread instance and pass it an instance of the implemented Runnable interface.
+        - Create a Thread pool and pass it an instance of the Runnable interaface
+
+THE RUNNABLE INTERFACE
+-The run() method should include all the workload that should be executed in the background by the
+child thread
+
+RUNNING THREADS
+-Two ways
+    .Create a Thread instance and pass it an instance that implements the class that implements Runnable
+        -If you require multiple threads to complete several tasks, then this approach does not enable you
+        to control the number of created threads.
+    .Create a Thread pool
+        -Allows you to set the max number of threads to be created. If they are all busy, the task
+        will wait.
+
+RUNNING THREADS
+-Single Threads ->
+    Thread thread = new Thread(new DoWork()); <- Class that implements Runnable
+    thread.start()
+-Thread pools ->
+    ExecutorService taskPool = Executors.newFixedThreadPool(n)
+    taskPool.execute(new DoWork()); <- Class that implements Runnable
+
+    .Solution to avoid single thread congestion and an infinite amount of threads being created
+
+IMPLEMENTING RUNNABLE
+-Implement in an anonymous class
+-Implement in a separate class
+-Have the activity implement Runnable
+-Use an inner class that implements Runnable
+
+THREAD COMMUNICATION
+-How to enable threads to communicate with one another?
+    .A shared global variable can be used to share content between threads but this can cause synchonization
+    issues
+-An easy way to accomplish this is to use Android's message-passing capabilities, which is a thread-safe
+mechanism
+-Two possibilities
+    .Using the Handler Class
+    .Using AsyncTask
+
+Do NOT tie buttons to thread calls!!!
+
+****CONCURRENCY HANDLERS****
+USING HANDLER OBJECT
+-A Handler allows you to send and process Message and Runnable objects associated with a thread's MessageQueue
+    .EX: Changing the UI via a Runnable in the message
+-Each handler instance is associated with a single thread and that thread's message queue
+    .When creating a new Handler, it is bound to the thread/message queue of the thread that is creating it
+-The handler will deliver messages and runnables to the message queue and execute them as they come out of the message queue
+
+THREAD COMMUNICATION
+-Using the Handler Object a worker thread can send messages to the main thread
+    .EX: Messages can be used to share progress information between the worker thread and the main thread
+-Can send something on a delay... Not sure what the use-case of this is???
+
+HANDLER OBJECT(MESSAGES)
+-The worker thread can use the handler obj to send messages to the UI thread by calling the handler's method
+sendMessage(Message m) -> Messages are bundles (key-value pair)
+-Synchronized
+-Message contains a Bundle obj (Extras is a Bundle!!!)
+-Receiving thread should implement the callback method handleMessage(message)
+
+STEPS USING THE HANDLER OBJ
+1. Create the handler in the main thread
+2. Create the worker thread and pass the handler to the worker thread
+3. Worker thread can now do work that can take longer than 5 seconds and will not hold the main thread
+4. Worker thread will use the handler to send status messages and results to the handler
+5. The received messages will be processed by the main thread which owns the handler
+
+Handler (Messages)
+-Can handle many data types, not just strings
+-Can send Parcelable and the Bitmap (which is Parcelable)
+-The worker thread can use the handler object to send a Runnable to the UI thread. The runnable will
+be run on the thread to which this handler is attached (UI thread)
+    .Can be done by using post(Runnable r) method
+    .The post versions allow you to enqueue Runnable objects to be called by the message queue when
+    they are received
+
+****Concurrency Async Task****
+USING ASYNCTASK
+-The problem with Java threads is that they are unable to alter the UI components
+-The Android AsyncTask is an abstract class for managing background operations that are expected to manipulate
+or perform asynchronous work on your user interface
+-An asynchronous task is defined by 3 generic types
+    1. Params -> the type of params sent to the task upon execution (URL)
+    2. Progress -> the type of progress units published during the background computation (Integer)
+    3. Result -> the type of the result of the background computation (String)
+-To use, craete a subclass of AsyncTask that implements the methods
+    .onPreExecute -> Runs in main thread, for setup before doing the background work
+    .doInBackground -> Runs in worker thread, this is where the background work is done
+    .onProgressUpdate -> Runs in main thread, called whenever the task wants to send an update to
+    the main thread
+    .onPostExecute -> Runs in main thread, called after the task is completed
+-(Arg... arg) means you can have any number of params passed (or an Array??? He said two different things...)
